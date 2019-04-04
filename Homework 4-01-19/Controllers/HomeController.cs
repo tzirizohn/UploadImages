@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
+using System.IO;
 using System.Web.Mvc;
+using Homework_4_01_19.Models;
 
 namespace Homework_4_01_19.Controllers
 {
@@ -12,19 +14,57 @@ namespace Homework_4_01_19.Controllers
         {
             return View();
         }
+                 
 
-        public ActionResult About()
+        public ActionResult Upload(HttpPostedFileBase image, Images images)
         {
-            ViewBag.Message = "Your application description page.";
+            string ext = Path.GetExtension(image.FileName);
+            string filename = $"{Guid.NewGuid()}{ext}";
+            string fullpath = $"{Server.MapPath("/UploadedImages")}\\{filename}";
+            image.SaveAs(fullpath);
+            PassWordManager pm = new PassWordManager(Properties.Settings.Default.Const);
+            images.FileName = filename;
+            int id= pm.AddImage(images);
+            images.id = id;                
+            return View(images);   
+        }   
 
-            return View();
-        }
-
-        public ActionResult Contact()
+        public ActionResult EnterPassword(int id, string text)
         {
-            ViewBag.Message = "Your contact page.";
+            PassWordManager pm = new PassWordManager(Properties.Settings.Default.Const);
+            Images i = pm.GetImage(id, text);
+            ViewModel vm = new ViewModel();
+            vm.Image = i;
 
-            return View();
-        }
+            if (Session["password"] == null)
+            {
+                Session["password"] = new List<int>();
+            }
+              
+            List<int> ids = (List<int>)Session["password"];
+            if (ids.Contains(id))
+            {
+                text = i.Password;
+            }
+            else if (text == i.Password)
+            {
+                ids.Add(id);
+            }
+
+            if (text != i.Password)
+            {
+                vm.Password = text;
+                vm.IncorrectPassword = true;
+            }
+            else
+            {
+                vm.Password = text;
+                vm.IncorrectPassword = false;
+                int x = pm.Count(id);
+                int y = pm.AddToCount(x, id);
+                vm.Image.Count = y;
+            }
+            return View(vm);
+        }      
     }
 }
